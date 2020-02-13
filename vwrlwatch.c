@@ -37,6 +37,7 @@ struct Page download_html() {
     struct Page chunk;
     chunk.buf = malloc(1);  /* will be grown as needed by the realloc above */ 
     chunk.size = 0;    /* no data at this point */ 
+    chunk.address = chunk.buf; 
 
     curl = curl_easy_init();
     if (!curl)
@@ -133,15 +134,20 @@ double find_price(struct Page *page, char needle[]) {
 
 int main(void)
 {
-    struct Page page = download_html();
     double ath, last_price, change_today;
+    double change = 0.0;
+    double recovery = 0.0;
+
+    struct Page page = download_html();
     ath = find_ath(&page);
     last_price = find_price(&page, "basevalues['61114463LastPrice'] = ");
     change_today = find_price(&page, "basevalues['61114463RelativeDifference'] = ");
     free(page.address);
 
-    double change = (last_price / ath - 1.0) * 100.0;
-    double recovery = (ath / last_price - 1.0) * 100.0;
+    if (ath > 0.0 && last_price > 0.0) {
+        change = (last_price / ath - 1.0) * 100.0;      
+        recovery = (ath / last_price - 1.0) * 100.0;
+    }
         
     printf("VWRL: €%.2f\n", last_price);
     printf("---\n");
