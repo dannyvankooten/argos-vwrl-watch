@@ -6,6 +6,7 @@
 struct Page {
     char * buf;
     size_t size;
+    char * address;
 };
 
 static size_t download(void *contents, size_t size, size_t nmemb, void *userp)
@@ -24,6 +25,7 @@ static size_t download(void *contents, size_t size, size_t nmemb, void *userp)
   memcpy(&(mem->buf[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->buf[mem->size] = 0;
+  mem->address = ptr;
  
   return realsize;
 }
@@ -59,26 +61,44 @@ struct Page download_html() {
 }
 
 
-// <span id="ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice">88,11</span>
-double find_ath(struct Page page) {
-    char needle[1024] = "<span id=\"ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice\">";
-    int len = strlen(needle);
-    while (strncmp(needle, page.buf, len) != 0) {
-        page.buf++;
-    }
-    page.buf += len;
 
+int find_in_page(struct Page *page, char needle[]) {
+    int i, j;
+    int len = strlen(needle);
+    for (i=0; i < page->size; i++) {
+         if (memcmp(needle, &page->buf[i], len) == 0) {
+           return i + len;
+        }
+    }
+
+    return -1;
+}
+
+
+// <span id="ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice">88,11</span>
+double find_ath(struct Page *page) {
+    char needle[1024] = "<span id=\"ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice\">";
+    int i = find_in_page(page, needle);
+    if (i < 0) {
+        return 0.00;
+    }
+
+    // read everything up to ; into char 
     char buf[100];
     int j = 0;
-    while (page.buf[j] != '<') {
-        if (page.buf[j] == ',') {
-            buf[j] = ',';
+    while (i < page->size && page->buf[i] != '<') {
+        if (page->buf[i] == ',') {
+            buf[j++] = '.';
         } else {
-            buf[j] = page.buf[j];
+            buf[j++] = page->buf[i];
         }
-        
-        j++;
+
+        i++;
     }
+    
+    // eat buffer up to index
+    page->buf += i;
+    page->size -= i;
 
     return atof(buf);
 }
@@ -89,19 +109,24 @@ double find_ath(struct Page page) {
 // basevalues['61114463LastTime'] = 1581591241000; 
 // basevalues['61114463AbsoluteDifference'] = -0.59;
 // basevalues['61114463RelativeDifference'] = -0.6699;
-double find_price(struct Page page, char needle[]) {
-    int len = strlen(needle);
-    while (strncmp(needle, page.buf, len) != 0) {
-        page.buf++;
+double find_price(struct Page *page, char needle[]) {
+    
+    int i = find_in_page(page, needle);
+    if (i < 0) {
+        return 0.00;
     }
-    page.buf += len;
 
+    // read everything up to ; into char 
     char buf[100];
     int j = 0;
-    while (page.buf[j] != ';') {
-        buf[j] = page.buf[j];
-        j++;
+    while (i < page->size && page->buf[i] != ';') {
+        buf[j++] = page->buf[i++];
     }
+    
+    // move buffer up to index because we know what we need next comes after what we're looking for now
+    // this is
+    page->buf += i;
+    page->size -= i;
 
     return atof(buf);
 };
@@ -109,10 +134,11 @@ double find_price(struct Page page, char needle[]) {
 int main(void)
 {
     struct Page page = download_html();
-    double ath = find_ath(page);
-    double last_price = find_price(page, "basevalues['61114463LastPrice'] = ");
-    double change_today = find_price(page, "basevalues['61114463RelativeDifference'] = ");
-    free(page.buf);
+    double ath, last_price, change_today;
+    ath = find_ath(&page);
+    last_price = find_price(&page, "basevalues['61114463LastPrice'] = ");
+    change_today = find_price(&page, "basevalues['61114463RelativeDifference'] = ");
+    free(page.address);
 
     double change = (last_price / ath - 1.0) * 100.0;
     double recovery = (ath / last_price - 1.0) * 100.0;
@@ -120,7 +146,7 @@ int main(void)
     printf("VWRL: €%.2f\n", last_price);
     printf("---\n");
     printf("Today's change: %.1f%%\n", change_today);
-    printf("%1.f%% from 52w high of €%.2f (%.1f%% to recover)\n", change, ath, recovery);
+    printf("%.1f%% from 52w high of €%.2f (%.1f%% to recover)\n", change, ath, recovery);
     printf("---\n");
     printf("Google Finance | href='https://www.google.com/search?site=finance&tbm=fin&q=AMS:+VWRL'\n");
     printf("Yahoo Finance | href='https://finance.yahoo.com/quote/VWRL.AS'\n");
