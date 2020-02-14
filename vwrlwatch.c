@@ -124,7 +124,6 @@ double find_price(struct Page *page, char needle[]) {
     }
     
     // move buffer up to index because we know what we need next comes after what we're looking for now
-    // this is
     page->buf += i;
     page->size -= i;
 
