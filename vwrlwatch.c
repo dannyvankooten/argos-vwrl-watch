@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 struct Page {
     char * buf;
@@ -49,6 +50,8 @@ struct Page download_html(char url[]) {
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) &chunk);
+    curl_easy_setopt(curl, CURL_SOCKET_TIMEOUT, 10);
+
     res = curl_easy_perform(curl);
     if (res != CURLE_OK)
     {
@@ -128,6 +131,13 @@ int main(void)
     printf("Google Finance | href='https://www.google.com/search?site=finance&tbm=fin&q=AMS:+VWRL'\n");
     printf("Yahoo Finance | href='https://finance.yahoo.com/quote/VWRL.AS'\n");
     printf("Morningstar | href='https://www.morningstar.com/etfs/XAMS/VWRL/quote.html'\n");
+    printf("---\n");
+
+    char time_str[20];
+    time_t curtime = time (NULL);
+    struct tm * loc_time = localtime (&curtime);
+    strftime(time_str, 100, "%I:%M %p", loc_time);
+    printf("Last updated at %s | refresh=true \n", time_str);
 
     return 0;
 }
