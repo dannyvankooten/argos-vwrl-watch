@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 struct Page {
     char * buf;
@@ -30,7 +31,7 @@ static size_t download(void *contents, size_t size, size_t nmemb, void *userp)
   return realsize;
 }
 
-struct Page download_html() {
+struct Page download_html(char url[]) {
     CURL *curl;
     CURLcode res;
 
@@ -46,13 +47,13 @@ struct Page download_html() {
         return chunk;
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://www.iex.nl/Beleggingsfonds-Koers/61114463/Vanguard-FTSE-All-World-UCITS-ETF.aspx");
+    curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) &chunk);
-
+    curl_easy_setopt(curl, CURL_SOCKET_TIMEOUT, 10);
     #ifdef __APPLE__
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
     #endif
 
     res = curl_easy_perform(curl);
@@ -66,8 +67,7 @@ struct Page download_html() {
     return chunk;        
 }
 
-
-
+/* find first occurence of needle in page buffer */
 int find_in_page(struct Page *page, char needle[]) {
     int i, j;
     int len = strlen(needle);
@@ -80,19 +80,17 @@ int find_in_page(struct Page *page, char needle[]) {
     return -1;
 }
 
-
-// <span id="ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice">88,11</span>
-double find_ath(struct Page *page) {
-    char needle[1024] = "<span id=\"ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice\">";
-    int i = find_in_page(page, needle);
+/* read (double) value between start and end string */
+double find_value(struct Page *page, char needle_s[], char needle_e) {
+    int i = find_in_page(page, needle_s);
     if (i < 0) {
         return 0.00;
     }
 
-    // read everything up to ; into char 
+    // read everything up to needle_e into char 
     char buf[100];
     int j = 0;
-    while (i < page->size && page->buf[i] != '<') {
+    while (i < page->size && page->buf[i] != needle_e) {
         if (page->buf[i] == ',') {
             buf[j++] = '.';
         } else {
@@ -101,54 +99,33 @@ double find_ath(struct Page *page) {
 
         i++;
     }
-    
-    // eat buffer up to index
+    buf[j++] = '\0';
+
+    // move buffer up to index because we know what we need next comes after what we're looking for now
     page->buf += i;
     page->size -= i;
 
     return atof(buf);
 }
 
+// <span id="ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice">88,11</span>
 // basevalues['61114463LastPrice'] = 87.48;
 // basevalues['61114463LowPrice'] = 87.48;
 // basevalues['61114463HighPrice'] = 87.9;
 // basevalues['61114463LastTime'] = 1581591241000; 
 // basevalues['61114463AbsoluteDifference'] = -0.59;
 // basevalues['61114463RelativeDifference'] = -0.6699;
-double find_price(struct Page *page, char needle[]) {
-    
-    int i = find_in_page(page, needle);
-    if (i < 0) {
-        return 0.00;
-    }
-
-    // read everything up to ; into char 
-    char buf[100];
-    int j = 0;
-    while (i < page->size && page->buf[i] != ';') {
-        buf[j++] = page->buf[i++];
-    }
-    
-    // move buffer up to index because we know what we need next comes after what we're looking for now
-    // this is
-    page->buf += i;
-    page->size -= i;
-
-    return atof(buf);
-};
-
 int main(void)
 {
+    struct Page page = download_html("https://www.iex.nl/Beleggingsfonds-Koers/61114463/Vanguard-FTSE-All-World-UCITS-ETF.aspx");
     double ath, last_price, change_today;
-    double change = 0.0;
-    double recovery = 0.0;
-
-    struct Page page = download_html();
-    ath = find_ath(&page);
-    last_price = find_price(&page, "basevalues['61114463LastPrice'] = ");
-    change_today = find_price(&page, "basevalues['61114463RelativeDifference'] = ");
+    ath = find_value(&page, "<span id=\"ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice\">", '<');
+    last_price = find_value(&page, "basevalues['61114463LastPrice'] = ", ';');
+    change_today = find_value(&page, "basevalues['61114463RelativeDifference'] = ", ';');
     free(page.address);
 
+    double change = 0.0;
+    double recovery = 0.0;
     if (ath > 0.0 && last_price > 0.0) {
         change = (last_price / ath - 1.0) * 100.0;      
         recovery = (ath / last_price - 1.0) * 100.0;
@@ -162,6 +139,13 @@ int main(void)
     printf("Google Finance | href='https://www.google.com/search?site=finance&tbm=fin&q=AMS:+VWRL'\n");
     printf("Yahoo Finance | href='https://finance.yahoo.com/quote/VWRL.AS'\n");
     printf("Morningstar | href='https://www.morningstar.com/etfs/XAMS/VWRL/quote.html'\n");
+    printf("---\n");
+
+    char time_str[20];
+    time_t curtime = time (NULL);
+    struct tm * loc_time = localtime (&curtime);
+    strftime(time_str, 100, "%I:%M %p", loc_time);
+    printf("Last updated at %s | refresh=true \n", time_str);
 
     return 0;
 }
