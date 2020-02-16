@@ -69,7 +69,7 @@ struct Page download_html(char url[]) {
 
 /* find first occurence of needle in page buffer */
 int find_in_page(struct Page *page, char needle[]) {
-    int i, j;
+    int i;
     int len = strlen(needle);
     for (i=0; i < page->size; i++) {
          if (memcmp(needle, &page->buf[i], len) == 0) {

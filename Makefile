@@ -1,6 +1,14 @@
-vwrlwatch: vwrlwatch.c 
-	mkdir -p .dist
-	cc vwrlwatch.c -lcurl -O3 -o .dist/vwrlwatch
+CC=gcc
+CFLAGS=-Wall -pedantic -Werror -lcurl
 
-debug: vwrlwatch.c
-	cc vwrlwatch.c -lcurl -g -o .dist/debug
+vwrlwatch: vwrlwatch.c .dist
+	$(CC) $(CFLAGS) vwrlwatch.c -O3 -o .dist/vwrlwatch
+
+debug: vwrlwatch.c .dist
+	$(CC) $(CFLAGS) vwrlwatch.c -g -o .dist/debug
+
+.dist:
+	mkdir -p .dist
+
+clean:
+	rm -r .dist
