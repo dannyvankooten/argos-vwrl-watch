@@ -1,14 +1,18 @@
-CC=gcc
-CFLAGS=-Wall -pedantic -Werror -lcurl
+CFLAGS=-Wall -pedantic -g -Werror
+LIBS= -lcurl 
+PREFIX=/usr/local
 
-vwrlwatch: vwrlwatch.c .dist
-	$(CC) $(CFLAGS) vwrlwatch.c -O3 -o .dist/vwrlwatch
+vwrlwatch: vwrlwatch.c
+	$(CC) $(CFLAGS) vwrlwatch.c -O3 -o $@ $(LIBS)
 
-debug: vwrlwatch.c .dist
-	$(CC) $(CFLAGS) vwrlwatch.c -g -o .dist/debug
-
-.dist:
-	mkdir -p .dist
-
+.PHONY: clean
 clean:
-	rm -r .dist
+	rm vwrlwatch 
+
+.PHONY: install
+install: vwrlwatch 
+	cp $< $(PREFIX)/bin/vwrlwatch
+
+.PHONY: uninstall 
+uninstall:
+	rm $(PREFIX)/bin/vwrlwatch 
