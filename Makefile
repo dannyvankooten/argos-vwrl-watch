@@ -1,5 +1,5 @@
 CFLAGS=-Wall -pedantic -g -Werror
-LIBS= -lcurl 
+LIBS= -L/usr/lib -lcurl 
 PREFIX=/usr/local
 
 vwrlwatch: vwrlwatch.c
@@ -12,6 +12,7 @@ clean:
 .PHONY: install
 install: vwrlwatch 
 	cp $< $(PREFIX)/bin/vwrlwatch
+	cp $< $(HOME)/Documents/BitBar/vwrlwatch.1h
 
 .PHONY: uninstall 
 uninstall:

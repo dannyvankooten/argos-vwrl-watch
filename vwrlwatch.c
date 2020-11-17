@@ -91,6 +91,7 @@ double find_value(struct Page *page, char needle_s[], char needle_e) {
     char buf[100];
     int j = 0;
     while (i < page->size && page->buf[i] != needle_e) {
+        // replace comma with dot so we can parse floats
         if (page->buf[i] == ',') {
             buf[j++] = '.';
         } else {
@@ -119,7 +120,7 @@ int main(void)
 {
     struct Page page = download_html("https://www.iex.nl/Beleggingsfonds-Koers/61114463/Vanguard-FTSE-All-World-UCITS-ETF.aspx");
     double ath, last_price, change_today;
-    ath = find_value(&page, "<span id=\"ctl00_ctl00_Content_TopContent_IssueDetailBar_RangeBlock52W_lblDayHighPrice\">", '<');
+    ath = find_value(&page, "<dt class=\"keylist__term\">Hoog 52 weeks</dt>\r\n                <dd class=\"keylist__value\"><span>", '<');
     last_price = find_value(&page, "basevalues['61114463LastPrice'] = ", ';');
     change_today = find_value(&page, "basevalues['61114463RelativeDifference'] = ", ';');
     free(page.address);
