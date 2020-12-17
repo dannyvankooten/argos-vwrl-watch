@@ -11,8 +11,7 @@ clean:
 
 .PHONY: install
 install: vwrlwatch 
-	cp $< $(PREFIX)/bin/vwrlwatch
-	cp $< $(HOME)/Documents/BitBar/vwrlwatch.1h
+	cp $< $(HOME)/.config/argos/vwrlwatch.1h
 
 .PHONY: uninstall 
 uninstall:
