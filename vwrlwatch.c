@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <err.h>
 
 struct Page {
     char * buf;
@@ -51,6 +52,7 @@ struct Page download_html(char url[]) {
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) &chunk);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
     curl_easy_setopt(curl, CURL_SOCKET_TIMEOUT, 10);
     #ifdef __APPLE__
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
@@ -68,44 +70,36 @@ struct Page download_html(char url[]) {
 }
 
 /* find first occurence of needle in page buffer */
-int find_in_page(struct Page *page, char needle[]) {
-    int i;
-    int len = strlen(needle);
-    for (i=0; i < page->size; i++) {
+char *find_in_page(struct Page *page, char needle[]) {
+    const size_t len = strlen(needle);
+    for (size_t i=0; i < page->size; i++) {
          if (memcmp(needle, &page->buf[i], len) == 0) {
-           return i + len;
+           return &page->buf[i+len];
         }
     }
 
-    return -1;
+    return NULL;
 }
 
 /* read (double) value between start and end string */
 double find_value(struct Page *page, char needle_s[], char needle_e) {
-    int i = find_in_page(page, needle_s);
-    if (i < 0) {
+    char *str = find_in_page(page, needle_s);
+    if (str == NULL) {
         return 0.00;
     }
 
-    // read everything up to needle_e into char 
+    // read everything up to needle_e into buf 
     char buf[100];
-    int j = 0;
-    while (i < page->size && page->buf[i] != needle_e) {
+    size_t j = 0;
+    for (size_t i=0; str[i] != '\0' && str[i] != needle_e; i++) {
         // replace comma with dot so we can parse floats
-        if (page->buf[i] == ',') {
+        if (str[i] == ',') {
             buf[j++] = '.';
         } else {
-            buf[j++] = page->buf[i];
+            buf[j++] = str[i];
         }
-
-        i++;
     }
     buf[j++] = '\0';
-
-    // move buffer up to index because we know what we need next comes after what we're looking for now
-    page->buf += i;
-    page->size -= i;
-
     return atof(buf);
 }
 
@@ -132,7 +126,7 @@ int main(void)
         recovery = (ath / last_price - 1.0) * 100.0;
     }
         
-    printf("VWRL: €%.2f\n", last_price);
+    printf("VWRL €%.2f\n", last_price);
     printf("---\n");
     printf("Today's change: %.1f%%\n", change_today);
     printf("%.1f%% from 52w high of €%.2f (%.1f%% to recover)\n", change, ath, recovery);

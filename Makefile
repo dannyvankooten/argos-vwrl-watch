@@ -3,7 +3,7 @@ LIBS= -L/usr/lib -lcurl
 PREFIX=/usr/local
 
 vwrlwatch: vwrlwatch.c
-	$(CC) $(CFLAGS) vwrlwatch.c -O3 -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $^ -O3 -o $@ $(LIBS)
 
 .PHONY: clean
 clean:
@@ -11,7 +11,7 @@ clean:
 
 .PHONY: install
 install: vwrlwatch 
-	cp $< $(HOME)/.config/argos/vwrlwatch.1h
+	cp $< $(HOME)/.config/argos/vwrlwatch.1h.bin
 
 .PHONY: uninstall 
 uninstall:
