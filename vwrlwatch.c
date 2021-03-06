@@ -69,29 +69,19 @@ struct Page download_html(char url[]) {
     return chunk;        
 }
 
-/* find first occurence of needle in page buffer */
-char *find_in_page(struct Page *page, char needle[]) {
-    const size_t len = strlen(needle);
-    for (size_t i=0; i < page->size; i++) {
-         if (memcmp(needle, &page->buf[i], len) == 0) {
-           return &page->buf[i+len];
-        }
-    }
-
-    return NULL;
-}
-
 /* read (double) value between start and end string */
 double find_value(struct Page *page, char needle_s[], char needle_e) {
-    char *str = find_in_page(page, needle_s);
+    char *str = strstr(page->buf, needle_s);
     if (str == NULL) {
         return 0.00;
     }
 
+    str += strlen(needle_s);
+
     // read everything up to needle_e into buf 
     char buf[100];
     size_t j = 0;
-    for (size_t i=0; str[i] != '\0' && str[i] != needle_e; i++) {
+    for (size_t i=0; str[i] != '\0' && str[i] != needle_e && i < 100; i++) {
         // replace comma with dot so we can parse floats
         if (str[i] == ',') {
             buf[j++] = '.';
