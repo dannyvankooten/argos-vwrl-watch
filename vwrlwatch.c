@@ -79,9 +79,9 @@ double find_value(struct Page *page, char needle_s[], char needle_e) {
     str += strlen(needle_s);
 
     // read everything up to needle_e into buf 
-    char buf[100];
+    char buf[64];
     size_t j = 0;
-    for (size_t i=0; str[i] != '\0' && str[i] != needle_e && i < 100; i++) {
+    for (size_t i=0; str[i] != '\0' && str[i] != needle_e && i < 63; i++) {
         // replace comma with dot so we can parse floats
         if (str[i] == ',') {
             buf[j++] = '.';
